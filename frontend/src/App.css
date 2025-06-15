@@ -1,0 +1,53 @@
+.App {
+  text-align: center;
+  min-height: 100vh;
+  background-color: #282c34;
+  color: white;
+}
+
+.App-header {
+  padding: 20px;
+  background-color: #1a1d24;
+}
+
+.App-header h1 {
+  margin: 0;
+  font-size: 2em;
+}
+
+main {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.dropzone {
+  border: 2px dashed #61dafb;
+  border-radius: 4px;
+  padding: 40px;
+  margin: 20px 0;
+  cursor: pointer;
+  transition: border-color 0.3s ease;
+}
+
+.dropzone:hover {
+  border-color: #ffffff;
+}
+
+.model-viewer {
+  width: 100%;
+  height: 600px;
+  margin-top: 20px;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.error {
+  color: #ff6b6b;
+  margin: 10px 0;
+}
+
+.loading {
+  color: #61dafb;
+  margin: 10px 0;
+} 
