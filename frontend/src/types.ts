@@ -44,6 +44,7 @@ export interface Task {
   size?: number;            // 使用容量（MB）
   created_at: string;
   options: any;
+  images_count: number;
 }
 
 export interface Project {

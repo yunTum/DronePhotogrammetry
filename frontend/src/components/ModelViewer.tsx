@@ -272,7 +272,7 @@ const ModelViewer: React.FC = () => {
                       <p className="task-header" style={{ fontSize: '0.6rem', margin: '0.1rem 0' }}>タスクID {task.id}</p>
                       <div className="task-stats" style={{ fontSize: '0.8rem', margin: '0.1rem 0' }}>
                         <p style={{ margin: '0.1rem 0' }}>進捗: {getTaskProgress(task.progress)}% | {getTaskStatus(Number(task.status))}</p>
-                        <p style={{ margin: '0.1rem 0' }}>処理時間: {task.processing_time ? `${Math.round(task.processing_time / (1000 * 60))}分` : '未計測'}</p>
+                        <p style={{ margin: '0.1rem 0' }}>処理時間: {task.processing_time ? `${Math.round(task.processing_time / (1000 * 60))}分` : '未計測'} | 画像数: {task.images_count}</p>
                         <p style={{ margin: '0.1rem 0' }}>使用容量: {task.size ? `${task.size.toFixed(2)} MB` : '未計測'}</p>
                       </div>
                       <div className="progress-bar" style={{ height: '0.5rem', margin: '0.2rem 0' }}>
