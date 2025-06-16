@@ -1,6 +1,6 @@
 {
-  "short_name": "ドローン3Dビューアー",
-  "name": "ドローン3Dモデルビューアー",
+  "short_name": "Photogrammetry Viewer",
+  "name": "Photogrammetry Viewer",
   "icons": [
     {
       "src": "favicon.ico",

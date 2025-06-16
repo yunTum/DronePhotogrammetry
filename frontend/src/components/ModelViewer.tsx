@@ -255,27 +255,27 @@ const ModelViewer: React.FC = () => {
   return (
     <div className="App">
       <header className="App-header">
-        <h1>ドローン3Dモデルビューアー</h1>
+        <h1>Photogrammetry Viewer</h1>
       </header>
 
       <main>
         <div className="projects-section">
           <div className="projects-list">
-            <h2>プロジェクト一覧</h2>
+            <h2 style={{ fontSize: '1.2rem', marginBottom: '0.5rem' }}>Project List</h2>
             {projects.map(project => (
-              <div key={project.id} className="project-item">
-                <h3>{project.name}</h3>
-                <p>作成日: {new Date(project.created_at).toLocaleString()}</p>
+              <div key={project.id} className="project-item" style={{ marginBottom: '0.5rem' }}>
+                <h3 style={{ fontSize: '1rem', margin: '0.2rem 0' }}>{project.name}</h3>
+                <p style={{ fontSize: '0.7rem', margin: '0.1rem 0' }}>作成日: {new Date(project.created_at).toLocaleString()}</p>
                 {project.tasks?.map((task: Task) => (
-                  <div key={task.id} className="task-item">
+                  <div key={task.id} className="task-item" style={{ margin: '0.2rem 0' }}>
                     <div className="task-info">
-                      <p className="task-header">タスク {task.id} | {getTaskStatus(Number(task.status))}</p>
-                      <div className="task-stats">
-                        <p>進捗: {getTaskProgress(task.progress)}%</p>
-                        <p>処理時間: {task.processing_time ? `${Math.round(task.processing_time / (1000 * 60))}分` : '未計測'}</p>
-                        <p>使用容量: {task.size ? `${task.size.toFixed(2)} MB` : '未計測'}</p>
+                      <p className="task-header" style={{ fontSize: '0.6rem', margin: '0.1rem 0' }}>タスクID {task.id}</p>
+                      <div className="task-stats" style={{ fontSize: '0.8rem', margin: '0.1rem 0' }}>
+                        <p style={{ margin: '0.1rem 0' }}>進捗: {getTaskProgress(task.progress)}% | {getTaskStatus(Number(task.status))}</p>
+                        <p style={{ margin: '0.1rem 0' }}>処理時間: {task.processing_time ? `${Math.round(task.processing_time / (1000 * 60))}分` : '未計測'}</p>
+                        <p style={{ margin: '0.1rem 0' }}>使用容量: {task.size ? `${task.size.toFixed(2)} MB` : '未計測'}</p>
                       </div>
-                      <div className="progress-bar">
+                      <div className="progress-bar" style={{ height: '0.5rem', margin: '0.2rem 0' }}>
                         <div 
                           className="progress-bar-fill" 
                           style={{ width: `${getTaskProgress(task.progress)}%` }}
@@ -286,6 +286,7 @@ const ModelViewer: React.FC = () => {
                       <button
                         onClick={() => handleTaskSelect(project.id, task.id)}
                         disabled={modelLoading}
+                        style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem' }}
                       >
                         {modelLoading && selectedTask?.taskId === task.id ? '読み込み中...' : '表示'}
                       </button>
