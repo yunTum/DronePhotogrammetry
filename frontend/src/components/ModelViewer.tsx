@@ -318,7 +318,7 @@ const ModelViewer: React.FC = () => {
           {modelUrl && !modelLoading && (
             <Canvas
               style={{ width: '100%', height: '100%' }}
-              camera={{ position: [0, 0, 5], fov: 45 }}
+              camera={{ position: [0, 0, 3], fov: 45 }}
             >
               <Suspense fallback={null}>
                 <ambientLight intensity={0.5} />

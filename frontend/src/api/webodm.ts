@@ -2,7 +2,6 @@ import axios from 'axios';
 import { LoginCredentials, LoginResponse, CreateModelResponse, ModelResponse, Project, Task } from '../types';
 
 const API_URL = process.env.REACT_APP_WEBODM_URL || 'http://localhost:8000';
-console.log('API_URL', API_URL);
 
 const api = axios.create({
   baseURL: API_URL,
@@ -16,7 +15,6 @@ api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
     if (token) {
-      // JWTトークンの形式に修正
       config.headers.Authorization = `JWT ${token}`;
     }
     return config;

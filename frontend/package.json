@@ -48,12 +48,5 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
-  },
-  "proxy": {
-    "/api": {
-      "target": "https://8080-cs-53f49c4c-5b59-46de-a1bd-0e771cfc203a.cs-asia-east1-cats.cloudshell.dev",
-      "secure": true,
-      "changeOrigin": true
-    }
   }
 }

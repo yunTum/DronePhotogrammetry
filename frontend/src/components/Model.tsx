@@ -74,21 +74,37 @@ export const Model: React.FC<ModelProps> = ({ url }) => {
     const downloadAndExtract = async () => {
       try {
         console.log('モデルのダウンロードを開始:', url);
+
+        if (!token) {
+          throw new Error('認証トークンが見つかりません');
+        }
+
         const response = await fetch(url, {
           method: 'GET',
           headers: {
             'Authorization': `JWT ${token}`,
-            'Accept': '*/*'
+            'Accept': 'application/json, application/zip, */*',
+            'Content-Type': 'application/json'
           },
-          credentials: 'include'
+          credentials: 'include',
+          mode: 'cors'
         });
 
         if (!response.ok) {
-          throw new Error(`モデルの取得に失敗しました: ${response.status} ${response.statusText}`);
+          const errorText = await response.text();
+          console.error('サーバーレスポンス:', {
+            status: response.status,
+            statusText: response.statusText,
+            headers: Object.fromEntries(response.headers.entries()),
+            body: errorText
+          });
+          throw new Error(`モデルの取得に失敗しました: ${response.status} ${response.statusText}\n${errorText}`);
         }
 
+        // レスポンスをArrayBufferとして取得
+        const arrayBuffer = await response.arrayBuffer();
         console.log('ZIPファイルのダウンロードが完了');
-        const zipBlob = await response.blob();
+        const zipBlob = new Blob([arrayBuffer], { type: 'application/zip' });
         console.log('ZIPファイルのサイズ:', zipBlob.size);
 
         if (zipBlob.size === 0) {
@@ -303,6 +319,11 @@ export const Model: React.FC<ModelProps> = ({ url }) => {
         // モデルを中央に配置
         const center = box.getCenter(new THREE.Vector3());
         object.position.sub(center.multiplyScalar(scale));
+
+        // モデルの向きを調整
+        object.rotation.set(0, 0, 0); // 回転をリセット
+        // object.rotateX(Math.PI / 2); // X軸周りに-90度回転（上向きに）
+        // object.rotateY(-Math.PI); // Y軸周りに180度回転（正面に向ける）
 
         setModel(object);
         scene.add(object);
