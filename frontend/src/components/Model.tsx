@@ -321,9 +321,9 @@ export const Model: React.FC<ModelProps> = ({ url }) => {
         object.position.sub(center.multiplyScalar(scale));
 
         // モデルの向きを調整
-        object.rotation.set(0, 0, 0); // 回転をリセット
-        // object.rotateX(Math.PI / 2); // X軸周りに-90度回転（上向きに）
-        // object.rotateY(-Math.PI); // Y軸周りに180度回転（正面に向ける）
+        const quaternion = new THREE.Quaternion();
+        quaternion.setFromEuler(new THREE.Euler(0, 0, 0));
+        object.quaternion.copy(quaternion);
 
         setModel(object);
         scene.add(object);

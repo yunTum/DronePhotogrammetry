@@ -1,7 +1,7 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls } from '@react-three/drei';
+import { TrackballControls } from '@react-three/drei';
 import { Project, Task } from '../types';
 import { webodmApi } from '../api/webodm';
 import { Model } from './Model';
@@ -319,13 +319,39 @@ const ModelViewer: React.FC = () => {
           {modelUrl && !modelLoading && (
             <Canvas
               style={{ width: '100%', height: '100%' }}
-              camera={{ position: [0, 0, 3], fov: 45 }}
+              camera={{ 
+                position: [3, 3, 3],
+                fov: 45,
+                near: 0.1,
+                far: 1000
+              }}
             >
               <Suspense fallback={null}>
                 <ambientLight intensity={0.5} />
                 <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} />
                 <Model url={modelUrl} />
-                <OrbitControls enableDamping dampingFactor={0.05} />
+                <TrackballControls
+                  enableDamping
+                  dampingFactor={0.05}
+                  rotateSpeed={2.5}
+                  zoomSpeed={1.2}
+                  panSpeed={0.8}
+                  minDistance={0.1}
+                  maxDistance={100}
+                  dynamicDampingFactor={0.2}
+                  noPan={false}
+                  noZoom={false}
+                  noRotate={false}
+                  staticMoving={false}
+                  center={[0, 0, 0]}
+                  handleKeys={{
+                    LEFT: 'ArrowLeft',
+                    UP: 'ArrowUp',
+                    RIGHT: 'ArrowRight',
+                    BOTTOM: 'ArrowDown',
+                    ROTATE: 'ControlLeft'
+                  }}
+                />
               </Suspense>
             </Canvas>
           )}
