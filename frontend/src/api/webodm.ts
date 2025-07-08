@@ -1,8 +1,8 @@
 import axios from 'axios';
 import { LoginCredentials, LoginResponse, CreateModelResponse, ModelResponse, Project, Task } from '../types';
 
-const API_URL = process.env.REACT_APP_WEBODM_URL || 'http://localhost:8000';
-
+const API_URL = ''; // プロキシ経由
+const API_TOKEN = process.env.REACT_APP_API_TOKEN || '';
 const api = axios.create({
   baseURL: API_URL,
   headers: {
@@ -17,12 +17,30 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `JWT ${token}`;
     }
+    if (API_TOKEN) {
+      config.headers.token = API_TOKEN;
+    }
+    
+    // CSRFトークンを取得して設定
+    const csrfToken = getCookie('csrftoken');
+    if (csrfToken) {
+      config.headers['X-CSRFToken'] = csrfToken;
+    }
+    
     return config;
   },
   (error) => {
     return Promise.reject(error);
   }
 );
+
+// CSRFトークンを取得する関数
+function getCookie(name: string): string | null {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop()?.split(';').shift() || null;
+  return null;
+}
 
 // レスポンスインターセプター
 api.interceptors.response.use(
@@ -89,8 +107,8 @@ export const webodmApi = {
 
     const response = await api.post<{ id: string }>(`/api/projects/${projectId}/tasks/`, formData, {
       headers: {
-        'Content-Type': 'multipart/form-data',
-      },
+        'Content-Type': 'multipart/form-data'
+      }
     });
     return response.data;
   },
@@ -142,7 +160,7 @@ export const webodmApi = {
       console.log('タスクステータス:', taskStatus); // デバッグ用
 
       // モデルのURLを直接構築
-      const modelUrl = `${API_URL}/api/projects/${projectId}/tasks/${taskId}/download/textured_model.zip`;
+      const modelUrl = `/api/projects/${projectId}/tasks/${taskId}/download/textured_model.zip`;
       console.log('モデルURL:', modelUrl); // デバッグ用
       return modelUrl;
     } catch (error) {
@@ -151,8 +169,8 @@ export const webodmApi = {
     }
   },
 
-  // モデルURLの取得
+    // モデルURLの取得
   getModelUrl: (projectId: number, taskId: string): string => {
-    return `${API_URL}/api/projects/${projectId}/tasks/${taskId}/download/textured_model.zip`;
+    return `/api/projects/${projectId}/tasks/${taskId}/download/textured_model.zip`;
   }
 }; 
