@@ -36,3 +36,9 @@ yarn-error.log*
 .Trashes
 ehthumbs.db
 Thumbs.db 
+
+/sfm/__pycache__/*
+/sfm/sfm_env/*
+/sfm/output/*
+/sfm/sfm_modules/__pycache__/*
+/sfm/simple_sfm_modules/__pycache__/*
