@@ -1,0 +1,66 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id         Int      @id @default(autoincrement())
+  username   String   @unique
+  password   String   // パスワード（ハッシュ化）
+  email      String?  @unique
+  first_name String?  // 名
+  last_name  String?  // 姓
+  isAdmin    Boolean  @default(false) // 管理者フラグ追加
+  webodm_user_id Int? // WebODMユーザーID
+  project    Project?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
+
+model Project {
+  id        String   @id @default(uuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    Int      @unique
+  name      String
+  description String?
+  webodm_project_id String?
+  tasks     Task[]
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
+
+model Task {
+  id        String   @id @default(uuid())
+  project   Project  @relation(fields: [projectId], references: [id])
+  projectId String
+  name      String
+  status    Int      // WebODM APIの数値ステータス
+  modelResult ModelResult?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
+
+model ModelResult {
+  id        String   @id @default(uuid())
+  task      Task     @relation(fields: [taskId], references: [id])
+  taskId    String   @unique
+  glb_file_path String?
+  thumbnail_path String?
+  vertex_count Int?
+  face_count Int?
+  texture_count Int?
+  model_size  BigInt?
+  processing_time Int?
+  created_at DateTime @default(now())
+}
