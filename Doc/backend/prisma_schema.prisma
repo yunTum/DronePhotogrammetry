@@ -1,0 +1,129 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ユーザーテーブル（WebODM認証情報管理）
+model User {
+  id              Int       @id @default(autoincrement())
+  username        String    @unique
+  email           String?   @unique
+  webodm_token    String?
+  token_expires_at DateTime?
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @default(now()) @updatedAt
+
+  // リレーション
+  projects Project[]
+
+  @@map("users")
+}
+
+// プロジェクトテーブル（3Dモデル生成プロジェクト管理）
+model Project {
+  id                 String   @id @default(uuid())
+  user_id            Int
+  name               String
+  description        String?
+  status             ProjectStatus @default(PENDING)
+  webodm_project_id  String?
+  created_at         DateTime @default(now())
+  updated_at         DateTime @default(now()) @updatedAt
+
+  // リレーション
+  user           User            @relation(fields: [user_id], references: [id])
+  uploaded_files UploadedFile[]
+  model_result   ModelResult?
+  processing_logs ProcessingLog[]
+
+  @@map("projects")
+}
+
+// アップロードファイルテーブル
+model UploadedFile {
+  id                String   @id @default(uuid())
+  project_id        String
+  original_filename  String
+  stored_filename   String
+  file_path         String
+  file_size         BigInt
+  mime_type         String
+  upload_date       DateTime @default(now())
+
+  // リレーション
+  project Project @relation(fields: [project_id], references: [id])
+
+  @@map("uploaded_files")
+}
+
+// 3Dモデル結果テーブル
+model ModelResult {
+  id              String   @id @default(uuid())
+  project_id      String   @unique
+  gltf_file_path  String?
+  glb_file_path   String?
+  obj_file_path   String?
+  thumbnail_path  String?
+  vertex_count    Int?
+  face_count      Int?
+  texture_count   Int?
+  model_size      BigInt?
+  processing_time Int?
+  created_at      DateTime @default(now())
+
+  // リレーション
+  project Project @relation(fields: [project_id], references: [id])
+
+  @@map("model_results")
+}
+
+// 処理ログテーブル
+model ProcessingLog {
+  id           String           @id @default(uuid())
+  project_id   String
+  step         ProcessingStep
+  status       ProcessingStatus @default(STARTED)
+  progress     Int              @default(0)
+  message      String?
+  error_details String?
+  created_at   DateTime         @default(now())
+
+  // リレーション
+  project Project @relation(fields: [project_id], references: [id])
+
+  @@map("processing_logs")
+}
+
+// プロジェクトステータス列挙型
+enum ProjectStatus {
+  PENDING     // 待機中
+  PROCESSING  // 処理中
+  COMPLETED   // 完了
+  FAILED      // 失敗
+  CANCELLED   // キャンセル
+}
+
+// 処理ステータス列挙型
+enum ProcessingStatus {
+  STARTED     // 開始
+  IN_PROGRESS // 進行中
+  COMPLETED   // 完了
+  FAILED      // 失敗
+}
+
+// 処理ステップ列挙型
+enum ProcessingStep {
+  FILE_UPLOAD         // ファイルアップロード
+  WEBODM_PROCESSING   // WebODM処理
+  MODEL_CONVERSION    // モデル変換
+  THUMBNAIL_GENERATION // サムネイル生成
+  METADATA_EXTRACTION // メタデータ抽出
+} 
