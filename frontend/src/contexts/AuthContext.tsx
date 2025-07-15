@@ -34,17 +34,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (credentials: LoginCredentials) => {
     try {
       const response = await webodmApi.login(credentials);
-      const { token, user } = response;
+      const { token } = response;
 
       // ローカルストレージに保存
       localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(user));
 
       // 状態を更新
       setAuthState({
         token,
         isAuthenticated: true,
-        user,
+        user: null, // WebODMはuser情報を返さないため
       });
     } catch (error) {
       console.error('ログインエラー:', error);

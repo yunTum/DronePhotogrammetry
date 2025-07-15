@@ -5,6 +5,7 @@ import { TrackballControls } from '@react-three/drei';
 import { Project, Task } from '../types';
 import { webodmApi } from '../api/webodm';
 import { Model } from './Model';
+import { useAuth } from '../contexts/AuthContext';
 import './ModelViewer.css';
 interface SelectedTask {
   projectId: number;
@@ -12,6 +13,7 @@ interface SelectedTask {
 }
 
 const ModelViewer: React.FC = () => {
+  const { logout } = useAuth();
   const [modelUrl, setModelUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -20,6 +22,12 @@ const ModelViewer: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedTask, setSelectedTask] = useState<SelectedTask | null>(null);
   const [modelLoading, setModelLoading] = useState<boolean>(false);
+
+  const handleLogout = () => {
+    logout();
+    // ページをリロードしてログイン画面に遷移
+    window.location.reload();
+  };
 
   // プロジェクト一覧の取得
   useEffect(() => {
@@ -256,6 +264,29 @@ const ModelViewer: React.FC = () => {
     <div className="App">
       <header className="App-header">
         <h1>Photogrammetry Viewer</h1>
+        <button 
+          onClick={handleLogout}
+          style={{
+            position: 'absolute',
+            top: '1rem',
+            right: '1rem',
+            padding: '0.5rem 1rem',
+            backgroundColor: '#dc3545',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontSize: '0.9rem'
+          }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.backgroundColor = '#c82333';
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.backgroundColor = '#dc3545';
+          }}
+        >
+          ログアウト
+        </button>
       </header>
 
       <main>

@@ -2,7 +2,11 @@ import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { LoginCredentials } from '../types';
 
-const Login: React.FC = () => {
+interface LoginProps {
+  onGlbViewerClick: () => void;
+}
+
+const Login: React.FC<LoginProps> = ({ onGlbViewerClick }) => {
   const [credentials, setCredentials] = useState<LoginCredentials>({
     username: '',
     password: '',
@@ -64,6 +68,31 @@ const Login: React.FC = () => {
           ログイン
         </button>
       </form>
+      
+      <div className="glb-viewer-section" style={{
+        marginTop: '20px',
+        textAlign: 'center',
+        padding: '20px',
+        borderTop: '1px solid #ddd'
+      }}>
+        <p style={{ marginBottom: '15px', color: '#666' }}>
+          ログインせずにGLBビューアを使用する
+        </p>
+        <button 
+          onClick={onGlbViewerClick}
+          style={{
+            padding: '10px 20px',
+            backgroundColor: '#28a745',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontSize: '14px'
+          }}
+        >
+          GLBビューアを開く
+        </button>
+      </div>
     </div>
   );
 };

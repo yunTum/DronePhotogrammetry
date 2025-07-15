@@ -1,8 +1,7 @@
 import axios from 'axios';
 import { LoginCredentials, LoginResponse, CreateModelResponse, ModelResponse, Project, Task } from '../types';
 
-const API_URL = ''; // プロキシ経由
-const API_TOKEN = process.env.REACT_APP_API_TOKEN || '';
+const API_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3000';
 const api = axios.create({
   baseURL: API_URL,
   headers: {
@@ -16,9 +15,6 @@ api.interceptors.request.use(
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `JWT ${token}`;
-    }
-    if (API_TOKEN) {
-      config.headers.token = API_TOKEN;
     }
     
     // CSRFトークンを取得して設定
@@ -47,9 +43,14 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401 || error.response?.status === 403) {
+      console.log('JWTが無効です。ログイン画面にリダイレクトします。');
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      window.location.reload();
+      
+      // 現在のページがログイン画面でない場合のみリダイレクト
+      if (!window.location.pathname.includes('/login')) {
+        window.location.href = '/';
+      }
     }
     return Promise.reject(error);
   }
@@ -59,11 +60,11 @@ export const webodmApi = {
   // 認証
   login: async (credentials: LoginCredentials): Promise<LoginResponse> => {
     try {
-      const response = await api.post<LoginResponse>('/api/token-auth/', credentials);
+      const response = await api.post<LoginResponse>('/auth/login', credentials);
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        if (error.response?.status === 400) {
+        if (error.response?.status === 401) {
           throw new Error('ユーザー名またはパスワードが正しくありません。');
         }
         throw new Error('ログインに失敗しました。サーバーに接続できません。');
@@ -79,38 +80,85 @@ export const webodmApi = {
       return response.data;
     } catch (error) {
       console.error('プロジェクト一覧の取得に失敗しました:', error);
+      
+      // 認証エラーの場合はログイン画面に遷移
+      if (axios.isAxiosError(error) && (error.response?.status === 401 || error.response?.status === 403)) {
+        console.log('認証エラーのためログイン画面に遷移します');
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        
+        // 現在のページがログイン画面でない場合のみリダイレクト
+        if (!window.location.pathname.includes('/login')) {
+          window.location.href = '/';
+        }
+      }
+      
       throw error;
     }
   },
 
   // プロジェクト作成
   createProject: async (name: string): Promise<{ id: number }> => {
-    const response = await api.post<{ id: number }>('/api/projects/', { name });
-    return response.data;
+    try {
+      const response = await api.post<{ id: number }>('/api/projects/', { name });
+      return response.data;
+    } catch (error) {
+      console.error('プロジェクト作成に失敗しました:', error);
+      
+      // 認証エラーの場合はログイン画面に遷移
+      if (axios.isAxiosError(error) && (error.response?.status === 401 || error.response?.status === 403)) {
+        console.log('認証エラーのためログイン画面に遷移します');
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        
+        if (!window.location.pathname.includes('/login')) {
+          window.location.href = '/';
+        }
+      }
+      
+      throw error;
+    }
   },
 
   // タスク作成（ファイルアップロードを含む）
   createTask: async (projectId: number, files: File[], options: any): Promise<{ id: string }> => {
-    const formData = new FormData();
-    
-    // ファイルの追加
-    files.forEach(file => {
-      formData.append('images', file);
-    });
+    try {
+      const formData = new FormData();
+      
+      // ファイルの追加
+      files.forEach(file => {
+        formData.append('images', file);
+      });
 
-    // オプションの追加（JSON文字列として）
-    formData.append('options', JSON.stringify([
-      { name: 'orthophoto-resolution', value: options['orthophoto-resolution'] },
-      { name: 'pc-quality', value: options['pc-quality'] },
-      { name: 'mesh-quality', value: options['mesh-quality'] }
-    ]));
+      // オプションの追加（JSON文字列として）
+      formData.append('options', JSON.stringify([
+        { name: 'orthophoto-resolution', value: options['orthophoto-resolution'] },
+        { name: 'pc-quality', value: options['pc-quality'] },
+        { name: 'mesh-quality', value: options['mesh-quality'] }
+      ]));
 
-    const response = await api.post<{ id: string }>(`/api/projects/${projectId}/tasks/`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
+      const response = await api.post<{ id: string }>(`/api/projects/${projectId}/tasks/`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('タスク作成に失敗しました:', error);
+      
+      // 認証エラーの場合はログイン画面に遷移
+      if (axios.isAxiosError(error) && (error.response?.status === 401 || error.response?.status === 403)) {
+        console.log('認証エラーのためログイン画面に遷移します');
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        
+        if (!window.location.pathname.includes('/login')) {
+          window.location.href = '/';
+        }
       }
-    });
-    return response.data;
+      
+      throw error;
+    }
   },
 
   // タスク状態の取得
@@ -126,6 +174,18 @@ export const webodmApi = {
       };
     } catch (error) {
       console.error('タスク状態の取得に失敗しました:', error);
+      
+      // 認証エラーの場合はログイン画面に遷移
+      if (axios.isAxiosError(error) && (error.response?.status === 401 || error.response?.status === 403)) {
+        console.log('認証エラーのためログイン画面に遷移します');
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        
+        if (!window.location.pathname.includes('/login')) {
+          window.location.href = '/';
+        }
+      }
+      
       throw error;
     }
   },
@@ -137,6 +197,18 @@ export const webodmApi = {
       return response.data;
     } catch (error) {
       console.error('プロジェクト詳細の取得に失敗しました:', error);
+      
+      // 認証エラーの場合はログイン画面に遷移
+      if (axios.isAxiosError(error) && (error.response?.status === 401 || error.response?.status === 403)) {
+        console.log('認証エラーのためログイン画面に遷移します');
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        
+        if (!window.location.pathname.includes('/login')) {
+          window.location.href = '/';
+        }
+      }
+      
       throw error;
     }
   },
@@ -148,6 +220,18 @@ export const webodmApi = {
       return response.data;
     } catch (error) {
       console.error('タスク一覧の取得に失敗しました:', error);
+      
+      // 認証エラーの場合はログイン画面に遷移
+      if (axios.isAxiosError(error) && (error.response?.status === 401 || error.response?.status === 403)) {
+        console.log('認証エラーのためログイン画面に遷移します');
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        
+        if (!window.location.pathname.includes('/login')) {
+          window.location.href = '/';
+        }
+      }
+      
       throw error;
     }
   },
@@ -165,6 +249,18 @@ export const webodmApi = {
       return modelUrl;
     } catch (error) {
       console.error('3Dモデルの取得に失敗しました:', error);
+      
+      // 認証エラーの場合はログイン画面に遷移
+      if (axios.isAxiosError(error) && (error.response?.status === 401 || error.response?.status === 403)) {
+        console.log('認証エラーのためログイン画面に遷移します');
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        
+        if (!window.location.pathname.includes('/login')) {
+          window.location.href = '/';
+        }
+      }
+      
       throw error;
     }
   },

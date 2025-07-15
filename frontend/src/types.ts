@@ -24,16 +24,12 @@ export interface LoginCredentials {
 
 export interface LoginResponse {
   token: string;
-  user: {
-    id: number;
-    username: string;
-  };
 }
 
 export interface AuthState {
   token: string | null;
   isAuthenticated: boolean;
-  user: LoginResponse['user'] | null;
+  user: null; // WebODMはuser情報を返さないため
 }
 
 export interface Task {
