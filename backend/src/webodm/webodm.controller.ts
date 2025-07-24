@@ -1,9 +1,25 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, Query, Res, Req, UseInterceptors, UploadedFiles, ForbiddenException } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { Response, Request } from 'express';
+import { ApiTags, ApiSecurity, ApiOperation, ApiParam, ApiBody, ApiResponse, ApiConsumes } from '@nestjs/swagger';
 import { WebodmService } from './webodm.service';
 import { UserService } from '../user.service';
+import { 
+  CreateProjectDto, 
+  CreateTaskDto, 
+  CreateAdminUserDto, 
+  UpdateAdminUserDto, 
+  SignupDto,
+  ProjectResponseDto,
+  TaskResponseDto,
+  UserResponseDto 
+} from './webodm.dto';
+import * as fs from 'fs';
+import * as path from 'path';
 
+
+@ApiTags('webodm')
+@ApiSecurity('JWT-auth')
 @Controller('api')
 export class WebodmController {
   constructor(
@@ -12,6 +28,12 @@ export class WebodmController {
   ) {}
 
   // プロジェクト一覧の取得
+  @ApiOperation({ summary: 'プロジェクト一覧取得' })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'プロジェクト一覧取得成功',
+    type: [ProjectResponseDto]
+  })
   @Get('projects/')
   async getProjects(@Req() req: Request, @Res() res: Response) {
     try {
@@ -31,8 +53,15 @@ export class WebodmController {
   }
 
   // プロジェクト作成
+  @ApiOperation({ summary: 'プロジェクト作成' })
+  @ApiBody({ type: CreateProjectDto })
+  @ApiResponse({ 
+    status: 201, 
+    description: 'プロジェクト作成成功',
+    type: ProjectResponseDto
+  })
   @Post('projects/')
-  async createProject(@Body() body: { name: string }, @Req() req: Request, @Res() res: Response) {
+  async createProject(@Body() body: CreateProjectDto, @Req() req: Request, @Res() res: Response) {
     try {
       const token = this.extractToken(req);
       const user = (req as any).user;
@@ -48,6 +77,13 @@ export class WebodmController {
   }
 
   // プロジェクト取得
+  @ApiOperation({ summary: 'プロジェクト詳細取得' })
+  @ApiParam({ name: 'id', description: 'プロジェクトID', type: String })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'プロジェクト詳細取得成功',
+    type: ProjectResponseDto
+  })
   @Get('projects/:id')
   async getProject(@Param('id') id: string, @Req() req: Request, @Res() res: Response) {
     try {
@@ -62,6 +98,13 @@ export class WebodmController {
   }
 
   // タスク一覧取得
+  @ApiOperation({ summary: 'タスク一覧取得' })
+  @ApiParam({ name: 'projectId', description: 'プロジェクトID', type: String })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'タスク一覧取得成功',
+    type: [TaskResponseDto]
+  })
   @Get('projects/:projectId/tasks')
   async getTasks(@Param('projectId') projectId: string, @Req() req: Request, @Res() res: Response) {
     try {
@@ -76,18 +119,44 @@ export class WebodmController {
   }
 
   // タスク作成
+  @ApiOperation({ summary: 'タスク作成（画像アップロード）' })
+  @ApiParam({ name: 'projectId', description: 'プロジェクトID', type: String })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ 
+    type: CreateTaskDto,
+    description: 'タスク作成用データ'
+  })
+  @ApiResponse({ 
+    status: 201, 
+    description: 'タスク作成成功',
+    type: TaskResponseDto
+  })
   @Post('projects/:projectId/tasks/')
   @UseInterceptors(FilesInterceptor('images'))
   async createTask(
     @Param('projectId') projectId: string,
     @UploadedFiles() files: Express.Multer.File[],
-    @Body() body: any,
+    @Body() body: CreateTaskDto,
     @Req() req: Request,
     @Res() res: Response
   ) {
     try {
       const token = this.extractToken(req);
-      const options = body.options ? JSON.parse(body.options) : [];
+      
+      // optionsパラメータの安全な処理
+      let options: string[] = [];
+      if (body.options) {
+        try {
+          // まずJSONとしてパースを試行
+          options = JSON.parse(body.options);
+        } catch (parseError) {
+          // JSONパースに失敗した場合、カンマ区切りの文字列として処理
+          if (typeof body.options === 'string') {
+            options = body.options.split(',').map(option => option.trim()).filter(option => option.length > 0);
+          }
+        }
+      }
+      
       const task = await this.webodmService.createTask(parseInt(projectId), files, options, token);
       res.json(task);
     } catch (error) {
@@ -98,6 +167,14 @@ export class WebodmController {
   }
 
   // タスク詳細の取得
+  @ApiOperation({ summary: 'タスク詳細取得' })
+  @ApiParam({ name: 'projectId', description: 'プロジェクトID', type: String })
+  @ApiParam({ name: 'taskId', description: 'タスクID', type: String })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'タスク詳細取得成功',
+    type: TaskResponseDto
+  })
   @Get('projects/:projectId/tasks/:taskId/')
   async getTask(
     @Param('projectId') projectId: string,
@@ -118,6 +195,11 @@ export class WebodmController {
   }
 
   // タスク削除
+  @ApiOperation({ summary: 'タスク削除（管理者のみ）' })
+  @ApiParam({ name: 'projectId', description: 'プロジェクトID', type: String })
+  @ApiParam({ name: 'taskId', description: 'タスクID', type: String })
+  @ApiResponse({ status: 200, description: 'タスク削除成功' })
+  @ApiResponse({ status: 403, description: '管理者のみ操作可能' })
   @Delete('projects/:projectId/tasks/:taskId/')
   async deleteTask(
     @Param('projectId') projectId: string,
@@ -141,6 +223,14 @@ export class WebodmController {
   }
 
   // タスクの再実行
+  @ApiOperation({ summary: 'タスク再実行' })
+  @ApiParam({ name: 'projectId', description: 'プロジェクトID', type: String })
+  @ApiParam({ name: 'taskId', description: 'タスクID', type: String })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'タスク再実行成功',
+    type: TaskResponseDto
+  })
   @Post('projects/:projectId/tasks/:taskId/restart/')
   async restartTask(
     @Param('projectId') projectId: string,
@@ -161,6 +251,11 @@ export class WebodmController {
   }
 
   // ファイルダウンロード
+  @ApiOperation({ summary: 'ファイルダウンロード' })
+  @ApiParam({ name: 'projectId', description: 'プロジェクトID', type: String })
+  @ApiParam({ name: 'taskId', description: 'タスクID', type: String })
+  @ApiParam({ name: 'filename', description: 'ファイル名', type: String })
+  @ApiResponse({ status: 200, description: 'ファイルダウンロード成功' })
   @Get('projects/:projectId/tasks/:taskId/download/:filename')
   async downloadFile(
     @Param('projectId') projectId: string,
@@ -184,7 +279,82 @@ export class WebodmController {
     }
   }
 
+  // モデル取得（GLB変換付き）
+  @ApiOperation({ summary: '3Dモデル取得（GLB変換）' })
+  @ApiParam({ name: 'projectId', description: 'プロジェクトID' })
+  @ApiParam({ name: 'taskId', description: 'タスクID' })
+  @ApiResponse({ status: 200, description: 'GLBモデル取得成功' })
+  @ApiResponse({ status: 404, description: 'モデルが見つかりません' })
+  @Get('projects/:projectId/tasks/:taskId/model')
+  async getModel(
+    @Param('projectId') projectId: string,
+    @Param('taskId') taskId: string,
+    @Req() req: Request,
+    @Res() res: Response
+  ) {
+    try {
+      const token = this.extractToken(req);
+      if (!token) throw new ForbiddenException('認証トークンが必要です');
+
+      // タスクの状態を確認
+      const task = await this.webodmService.getTask(parseInt(projectId), taskId, token);
+      
+      // タスクが完了していない場合はエラー
+      if (task.status !== 40) {
+        throw new Error(`タスクが完了していません。現在のステータス: ${task.statusLabel || task.status}`);
+      }
+
+      // GLBファイルのパスを生成
+      const glbFileName = `${taskId}.glb`;
+      const glbFilePath = path.join(process.cwd(), 'uploads', 'users', 'projects', 'model', 'glb', glbFileName);
+
+      // GLBファイルが既に存在する場合は直接返す
+      if (fs.existsSync(glbFilePath)) {
+        console.log('既存のGLBファイルを使用:', glbFilePath);
+        return res.sendFile(glbFilePath);
+      }
+
+      // ZIPファイルをダウンロードしてGLB変換
+      console.log('ZIPファイルをダウンロードしてGLB変換を開始');
+      const zipBuffer = await this.webodmService.downloadFile(parseInt(projectId), taskId, 'textured_model.zip', token);
+      
+      // 既存のGLB変換APIを使用
+      const { convertZipToGlb } = require('../common/zip-to-gltf');
+      const glbBuffer = await convertZipToGlb(zipBuffer);
+      
+      console.log(`GLB変換完了: ${glbBuffer.length} bytes`);
+
+      // GLBディレクトリを作成
+      const glbDir = path.join(process.cwd(), 'uploads', 'users', 'projects', 'model', 'glb');
+      if (!fs.existsSync(glbDir)) {
+        fs.mkdirSync(glbDir, { recursive: true });
+      }
+
+      // GLBファイルを保存
+      fs.writeFileSync(glbFilePath, glbBuffer);
+      console.log('GLBファイルを保存:', glbFilePath);
+
+      // GLBファイルを返す
+      res.setHeader('Content-Type', 'model/gltf-binary');
+      res.setHeader('Content-Disposition', `attachment; filename="${glbFileName}"`);
+      res.setHeader('Content-Length', glbBuffer.length.toString());
+      res.send(glbBuffer);
+
+    } catch (error) {
+      console.error('モデル取得エラー:', error);
+      const status = (error as any).status || 500;
+      res.status(status).json({ error: error.message });
+    }
+  }
+
   // 管理者: ユーザー一覧取得
+  @ApiOperation({ summary: '管理者: ユーザー一覧取得（管理者のみ）' })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'ユーザー一覧取得成功',
+    type: [UserResponseDto]
+  })
+  @ApiResponse({ status: 403, description: '管理者のみ操作可能' })
   @Get('admin/users')
   async getAdminUsers(@Req() req: Request, @Res() res: Response) {
     try {
@@ -199,9 +369,17 @@ export class WebodmController {
     }
   }
 
-  // 管理者: ユーザー新規作成
+  // 管理者: ユーザー作成
+  @ApiOperation({ summary: '管理者: ユーザー作成（管理者のみ）' })
+  @ApiBody({ type: CreateAdminUserDto })
+  @ApiResponse({ 
+    status: 201, 
+    description: 'ユーザー作成成功',
+    type: UserResponseDto
+  })
+  @ApiResponse({ status: 403, description: '管理者のみ操作可能' })
   @Post('admin/users')
-  async createAdminUser(@Body() body: any, @Req() req: Request, @Res() res: Response) {
+  async createAdminUser(@Body() body: CreateAdminUserDto, @Req() req: Request, @Res() res: Response) {
     try {
       const token = this.extractToken(req);
       if (!token) throw new ForbiddenException('認証トークンが必要です');
@@ -214,7 +392,15 @@ export class WebodmController {
     }
   }
 
-  // 管理者: ユーザー詳細取得
+  // 管理者: ユーザー取得
+  @ApiOperation({ summary: '管理者: ユーザー詳細取得（管理者のみ）' })
+  @ApiParam({ name: 'id', description: 'ユーザーID', type: String })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'ユーザー詳細取得成功',
+    type: UserResponseDto
+  })
+  @ApiResponse({ status: 403, description: '管理者のみ操作可能' })
   @Get('admin/users/:id')
   async getAdminUser(@Param('id') id: string, @Req() req: Request, @Res() res: Response) {
     try {
@@ -230,8 +416,17 @@ export class WebodmController {
   }
 
   // 管理者: ユーザー更新
+  @ApiOperation({ summary: '管理者: ユーザー情報更新（管理者のみ）' })
+  @ApiParam({ name: 'id', description: 'ユーザーID', type: String })
+  @ApiBody({ type: UpdateAdminUserDto })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'ユーザー更新成功',
+    type: UserResponseDto
+  })
+  @ApiResponse({ status: 403, description: '管理者のみ操作可能' })
   @Put('admin/users/:id')
-  async updateAdminUser(@Param('id') id: string, @Body() body: any, @Req() req: Request, @Res() res: Response) {
+  async updateAdminUser(@Param('id') id: string, @Body() body: UpdateAdminUserDto, @Req() req: Request, @Res() res: Response) {
     try {
       const token = this.extractToken(req);
       if (!token) throw new ForbiddenException('認証トークンが必要です');
@@ -245,6 +440,10 @@ export class WebodmController {
   }
 
   // 管理者: ユーザー削除
+  @ApiOperation({ summary: '管理者: ユーザー削除（管理者のみ）' })
+  @ApiParam({ name: 'id', description: 'ユーザーID', type: String })
+  @ApiResponse({ status: 200, description: 'ユーザー削除成功' })
+  @ApiResponse({ status: 403, description: '管理者のみ操作可能' })
   @Delete('admin/users/:id')
   async deleteAdminUser(@Param('id') id: string, @Req() req: Request, @Res() res: Response) {
     try {
@@ -260,14 +459,15 @@ export class WebodmController {
   }
 
   // サインアップ
+  @ApiOperation({ summary: 'ユーザーサインアップ' })
+  @ApiBody({ type: SignupDto })
+  @ApiResponse({ 
+    status: 201, 
+    description: 'サインアップ成功',
+    type: UserResponseDto
+  })
   @Post('signup')
-  async signup(@Body() body: {
-    username: string;
-    password: string;
-    email?: string;
-    first_name?: string;
-    last_name?: string;
-  }, @Req() req: Request, @Res() res: Response) {
+  async signup(@Body() body: SignupDto, @Req() req: Request, @Res() res: Response) {
     try {
       // 管理者トークンを環境変数から取得（または管理者アカウントでログインして取得）
       const adminToken = process.env.WEBODM_ADMIN_TOKEN;

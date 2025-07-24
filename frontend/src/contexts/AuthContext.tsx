@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState } from 'react';
-import { LoginCredentials, LoginResponse, AuthState } from '../types';
+import { LoginCredentials, LoginResponse, AuthState, User } from '../types';
 import { webodmApi } from '../api/webodm';
 
 interface AuthContextType extends AuthState {
@@ -13,7 +13,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [authState, setAuthState] = useState<AuthState>(() => {
     const token = localStorage.getItem('token');
     const userStr = localStorage.getItem('user');
-    let user = null;
+    let user: User | null = null;
     
     try {
       if (userStr) {
@@ -34,16 +34,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (credentials: LoginCredentials) => {
     try {
       const response = await webodmApi.login(credentials);
-      const { token } = response;
+      const { token, user } = response;
 
       // ローカルストレージに保存
       localStorage.setItem('token', token);
+      if (user) {
+        localStorage.setItem('user', JSON.stringify(user));
+      }
 
       // 状態を更新
       setAuthState({
         token,
         isAuthenticated: true,
-        user: null, // WebODMはuser情報を返さないため
+        user: user || null,
       });
     } catch (error) {
       console.error('ログインエラー:', error);

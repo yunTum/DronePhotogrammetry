@@ -26,11 +26,14 @@
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.0.1",
     "@nestjs/platform-express": "^11.0.1",
+    "@nestjs/swagger": "^11.2.0",
     "@prisma/client": "^6.11.1",
     "@types/adm-zip": "^0.5.7",
     "@types/multer": "^2.0.0",
     "@types/obj-file-parser": "^0.5.2",
     "adm-zip": "^0.5.16",
+    "bcrypt": "^6.0.0",
+    "extract-zip": "^2.0.1",
     "gltf-pipeline": "^4.3.0",
     "gltf-validator": "^2.0.0-dev.3.10",
     "multer": "^2.0.1",
@@ -39,7 +42,8 @@
     "prisma": "^6.11.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
-    "sharp": "^0.34.3"
+    "sharp": "^0.34.3",
+    "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",

@@ -102,7 +102,7 @@ export class WebodmService {
   }
 
   // タスク作成
-  async createTask(projectId: number, files: Express.Multer.File[], options: any[], token: string | null): Promise<{ id: string }> {
+  async createTask(projectId: number, files: Express.Multer.File[], options: string[], token: string | null): Promise<{ id: string }> {
     const formData = new FormData();
     
     // ファイルの追加
@@ -110,8 +110,10 @@ export class WebodmService {
       formData.append('images', new Blob([file.buffer]), file.originalname);
     });
 
-    // オプションの追加
-    formData.append('options', JSON.stringify(options));
+    // オプションの追加（各オプションを個別に追加）
+    options.forEach(option => {
+      formData.append('options', option);
+    });
 
     const headers = this.getHeaders(token, false); // multipart/form-dataのためContent-Typeを設定しない
     const response = await fetch(`${this.webodmUrl}/api/projects/${projectId}/tasks/`, {

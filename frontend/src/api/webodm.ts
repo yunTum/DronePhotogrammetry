@@ -123,6 +123,11 @@ export const webodmApi = {
   // タスク作成（ファイルアップロードを含む）
   createTask: async (projectId: number, files: File[], options: any): Promise<{ id: string }> => {
     try {
+      // 最低2枚の画像が必要
+      if (files.length < 2) {
+        throw new Error('最低2枚の画像が必要です。');
+      }
+
       const formData = new FormData();
       
       // ファイルの追加
@@ -130,12 +135,9 @@ export const webodmApi = {
         formData.append('images', file);
       });
 
-      // オプションの追加（JSON文字列として）
-      formData.append('options', JSON.stringify([
-        { name: 'orthophoto-resolution', value: options['orthophoto-resolution'] },
-        { name: 'pc-quality', value: options['pc-quality'] },
-        { name: 'mesh-quality', value: options['mesh-quality'] }
-      ]));
+      // オプションの追加（WebODMの基本オプション）
+      formData.append('options', 'fast-orthophoto');
+      formData.append('options', 'dtm');
 
       const response = await api.post<{ id: string }>(`/api/projects/${projectId}/tasks/`, formData, {
         headers: {
@@ -146,14 +148,22 @@ export const webodmApi = {
     } catch (error) {
       console.error('タスク作成に失敗しました:', error);
       
-      // 認証エラーの場合はログイン画面に遷移
-      if (axios.isAxiosError(error) && (error.response?.status === 401 || error.response?.status === 403)) {
-        console.log('認証エラーのためログイン画面に遷移します');
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+      // エラーメッセージの改善
+      if (axios.isAxiosError(error)) {
+        if (error.response?.status === 400) {
+          const errorMessage = error.response.data?.error || 'タスク作成に失敗しました。';
+          throw new Error(errorMessage);
+        }
         
-        if (!window.location.pathname.includes('/login')) {
-          window.location.href = '/';
+        // 認証エラーの場合はログイン画面に遷移
+        if (error.response?.status === 401 || error.response?.status === 403) {
+          console.log('認証エラーのためログイン画面に遷移します');
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          
+          if (!window.location.pathname.includes('/login')) {
+            window.location.href = '/';
+          }
         }
       }
       
@@ -243,8 +253,14 @@ export const webodmApi = {
       const taskStatus = await webodmApi.getTaskStatus(projectId, taskId);
       console.log('タスクステータス:', taskStatus); // デバッグ用
 
-      // モデルのURLを直接構築
-      const modelUrl = `/api/projects/${projectId}/tasks/${taskId}/download/textured_model.zip`;
+      // バックエンドのモデル取得APIを使用
+      const response = await api.get(`/api/projects/${projectId}/tasks/${taskId}/model`, {
+        responseType: 'arraybuffer'
+      });
+      
+      // ArrayBufferをBlobに変換してURLを作成
+      const blob = new Blob([response.data], { type: 'model/gltf-binary' });
+      const modelUrl = URL.createObjectURL(blob);
       console.log('モデルURL:', modelUrl); // デバッグ用
       return modelUrl;
     } catch (error) {
@@ -265,8 +281,9 @@ export const webodmApi = {
     }
   },
 
-    // モデルURLの取得
+  // モデルURLの取得（非推奨 - getModelを使用してください）
   getModelUrl: (projectId: number, taskId: string): string => {
-    return `/api/projects/${projectId}/tasks/${taskId}/download/textured_model.zip`;
+    console.warn('getModelUrlは非推奨です。getModelを使用してください。');
+    return `${API_URL}/api/projects/${projectId}/tasks/${taskId}/model`;
   }
 }; 

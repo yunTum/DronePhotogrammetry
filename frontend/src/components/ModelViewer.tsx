@@ -7,12 +7,18 @@ import { webodmApi } from '../api/webodm';
 import { Model } from './Model';
 import { useAuth } from '../contexts/AuthContext';
 import './ModelViewer.css';
+import { Box, Button, Input, Heading, VStack, Text, Flex } from "@chakra-ui/react";
+import Header from './Header';
+
 interface SelectedTask {
   projectId: number;
   taskId: string;
 }
+interface ModelViewerProps {
+  onGoMypage: () => void;
+}
 
-const ModelViewer: React.FC = () => {
+const ModelViewer: React.FC<ModelViewerProps> = ({ onGoMypage }) => {
   const { logout } = useAuth();
   const [modelUrl, setModelUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
@@ -22,6 +28,7 @@ const ModelViewer: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedTask, setSelectedTask] = useState<SelectedTask | null>(null);
   const [modelLoading, setModelLoading] = useState<boolean>(false);
+  const [modelError, setModelError] = useState<string | null>(null);
 
   const handleLogout = () => {
     logout();
@@ -92,16 +99,20 @@ const ModelViewer: React.FC = () => {
         if (Number(status.status) === 40) {
           console.log('タスク完了を検出');
           clearInterval(intervalId); // 先にインターバルを停止
-          const modelUrl = webodmApi.getModelUrl(currentProject.id, currentProject.taskId);
+          const modelUrl = await webodmApi.getModel(currentProject.id, currentProject.taskId);
           setModelUrl(modelUrl);
           setLoading(false);
           setCurrentProject(null);
-          // プロジェクト一覧を更新
-          const updatedProject = await webodmApi.getProject(currentProject.id);
-          setProjects(prev => {
-            console.log('プロジェクト一覧を更新:', updatedProject);
-            return prev.map(p => p.id === updatedProject.id ? updatedProject : p);
+          // プロジェクト一覧を最新化
+          const projectsWithTasks = await webodmApi.getProjects().then(async (response) => {
+            return Promise.all(
+              response.map(async (project) => {
+                const tasks = await webodmApi.getTasks(project.id);
+                return { ...project, tasks };
+              })
+            );
           });
+          setProjects(projectsWithTasks);
           return; // 処理を終了
         } else if (Number(status.status) === 20) {
           console.log('タスク進行中');
@@ -128,8 +139,8 @@ const ModelViewer: React.FC = () => {
       console.log('進捗監視を開始:', currentProject);
       // 即座に最初のチェックを実行
       checkProgress();
-      // 2秒ごとに進捗を更新
-      intervalId = setInterval(checkProgress, 2000);
+      // 5秒ごとに進捗を更新
+      intervalId = setInterval(checkProgress, 5000);
     }
 
     return () => {
@@ -155,26 +166,8 @@ const ModelViewer: React.FC = () => {
       }
 
       // モデルURLを取得
-      const modelUrl = webodmApi.getModelUrl(projectId, taskId);
+      const modelUrl = await webodmApi.getModel(projectId, taskId);
       console.log('モデルURL:', modelUrl); // デバッグ用
-
-      // JWTトークンを取得
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('認証トークンが見つかりません');
-      }
-
-      // URLの有効性を確認
-      const response = await fetch(modelUrl, {
-        method: 'HEAD',
-        headers: {
-          'Authorization': `JWT ${token}`
-        }
-      });
-      console.log('モデル response:', response);
-      if (!response.ok) {
-        throw new Error(`モデルファイルが見つかりません: ${response.status}`);
-      }
 
       setModelUrl(modelUrl);
       setSelectedTask({ projectId, taskId });
@@ -210,13 +203,23 @@ const ModelViewer: React.FC = () => {
       
       // タスク作成（ファイルアップロードを含む）
       const task = await webodmApi.createTask(project.id, acceptedFiles, {
-        'orthophoto-resolution': 2,
+        'orthophoto-resolution': '2',
         'pc-quality': 'medium',
         'mesh-quality': 'medium',
       });
 
       console.log('タスクを作成:', task);
       setCurrentProject({ id: project.id, taskId: task.id });
+      // プロジェクト一覧を最新化
+      const projectsWithTasks = await webodmApi.getProjects().then(async (response) => {
+        return Promise.all(
+          response.map(async (project) => {
+            const tasks = await webodmApi.getTasks(project.id);
+            return { ...project, tasks };
+          })
+        );
+      });
+      setProjects(projectsWithTasks);
     } catch (err) {
       console.error('モデル生成エラー:', err);
       setError('モデルの生成中にエラーが発生しました');
@@ -235,15 +238,15 @@ const ModelViewer: React.FC = () => {
   const getTaskStatus = (status: number): string => {
     switch (status) {
       case 10:
-        return 'QUEUED';
+        return '待機中（QUEUED）';
       case 20:
-        return 'RUNNING';
+        return '処理中（RUNNING）';
       case 40:
-        return 'COMPLETED';
+        return '完了（COMPLETED）';
       case 30:
-        return 'FAILED';
+        return '失敗（FAILED）';
       case 50:
-        return 'CANCELED';
+        return 'キャンセル（CANCELED）';
       default:
         return `ステータス: ${status}`;
     }
@@ -261,147 +264,198 @@ const ModelViewer: React.FC = () => {
   };
 
   return (
-    <div className="App">
-      <header className="App-header">
-        <h1>Photogrammetry Viewer</h1>
-        <button 
-          onClick={handleLogout}
-          style={{
-            position: 'absolute',
-            top: '1rem',
-            right: '1rem',
-            padding: '0.5rem 1rem',
-            backgroundColor: '#dc3545',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            fontSize: '0.9rem'
-          }}
-          onMouseOver={(e) => {
-            e.currentTarget.style.backgroundColor = '#c82333';
-          }}
-          onMouseOut={(e) => {
-            e.currentTarget.style.backgroundColor = '#dc3545';
-          }}
-        >
-          ログアウト
-        </button>
-      </header>
+    <Box className="App" minH="100vh" bg="gray.900">
+      <Header
+        title="Photogrammetry Viewer"
+        leftButtonText="マイページ"
+        onLeftButtonClick={onGoMypage}
+        rightButtonText="ログアウト"
+        onRightButtonClick={handleLogout}
+      />
 
-      <main>
-        <div className="projects-section">
-          <div className="projects-list">
-            <h2 style={{ fontSize: '1.2rem', marginBottom: '0.5rem' }}>Project List</h2>
-            {projects.map(project => (
-              <div key={project.id} className="project-item" style={{ marginBottom: '0.5rem' }}>
-                <h3 style={{ fontSize: '1rem', margin: '0.2rem 0' }}>{project.name}</h3>
-                <p style={{ fontSize: '0.7rem', margin: '0.1rem 0' }}>作成日: {new Date(project.created_at).toLocaleString()}</p>
-                {project.tasks?.map((task: Task) => (
-                  <div key={task.id} className="task-item" style={{ margin: '0.2rem 0' }}>
-                    <div className="task-info">
-                      <p className="task-header" style={{ fontSize: '0.6rem', margin: '0.1rem 0' }}>タスクID {task.id}</p>
-                      <div className="task-stats" style={{ fontSize: '0.8rem', margin: '0.1rem 0' }}>
-                        <p style={{ margin: '0.1rem 0' }}>進捗: {getTaskProgress(task.progress)}% | {getTaskStatus(Number(task.status))}</p>
-                        <p style={{ margin: '0.1rem 0' }}>処理時間: {task.processing_time ? `${Math.round(task.processing_time / (1000 * 60))}分` : '未計測'} | 画像数: {task.images_count}</p>
-                        <p style={{ margin: '0.1rem 0' }}>使用容量: {task.size ? `${task.size.toFixed(2)} MB` : '未計測'}</p>
-                      </div>
-                      <div className="progress-bar" style={{ height: '0.5rem', margin: '0.2rem 0' }}>
-                        <div 
-                          className="progress-bar-fill" 
-                          style={{ width: `${getTaskProgress(task.progress)}%` }}
-                        />
-                      </div>
-                    </div>
-                    {isTaskCompleted(Number(task.status)) && (
-                      <button
-                        onClick={() => handleTaskSelect(project.id, task.id)}
-                        disabled={modelLoading}
-                        style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem' }}
+      <Flex className="main-content" width="100%" height="calc(100vh - 80px)">
+        {/* 左カラム: プロジェクトリスト */}
+        <Box minW="340px" maxW="400px" width="25%" p={4} bg="gray.800" borderRight="1px solid #2d3748" overflowY="auto">
+          <VStack gap={4} align="stretch" width="100%">
+            <Box className="projects-section">
+              <Heading size="md" mb="0.5rem" bg="gray.800" color="teal.200" p={2} borderRadius="md">Project List</Heading>
+              {projects.map(project => (
+                <Box
+                  key={project.id}
+                  className="project-item"
+                  p={3}
+                  mb={3}
+                  bg="gray.700"
+                  borderRadius="lg"
+                  boxShadow="md"
+                  _hover={{ boxShadow: "xl", bg: "gray.600", transform: "translateY(-2px) scale(1.02)", transition: "all 0.2s" }}
+                  transition="all 0.2s"
+                >
+                  <Heading size="sm" mb={1} color="teal.200" fontWeight="bold" letterSpacing="wide">{project.name}</Heading>
+                  <Text fontSize="xs" mb={2} color="gray.300">作成日: {new Date(project.created_at).toLocaleString()}</Text>
+                  <Box>
+                    {project.tasks?.map((task: Task, idx) => (
+                      <Box
+                        key={task.id}
+                        className="task-item"
+                        p={3}
+                        borderRadius="md"
+                        bg="gray.800"
+                        mb={idx !== project.tasks!.length - 1 ? 2 : 0}
+                        boxShadow="sm"
+                        display="flex"
+                        flexDirection="column"
+                        gap={2}
+                        _hover={{
+                          boxShadow: "md",
+                          bg: "gray.700",
+                          transform: "translateY(-2px) scale(1.01)",
+                          transition: "all 0.2s"
+                        }}
+                        transition="all 0.2s"
                       >
-                        {modelLoading && selectedTask?.taskId === task.id ? '読み込み中...' : '表示'}
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ))}
-          </div>
+                        <Text fontSize="sm" fontWeight="bold" color="teal.200" display="flex" alignItems="center" gap={1}>
+                          <span style={{fontSize: '1.1em'}}>🗂️</span> {task.name}
+                        </Text>
+                        <Box className="task-stats" fontSize="sm" color="gray.100" pl={2}>
+                          <Text mb={0.5} fontSize="xs">進捗: <b>{getTaskProgress(task.progress)}%</b> | {getTaskStatus(Number(task.status))}</Text>
+                          <Text mb={0.5} fontSize="xs">処理時間: {task.processing_time ? `${Math.round(task.processing_time / (1000 * 60))}分` : '未計測'} | 画像数: {task.images_count}</Text>
+                          <Text mb={0.5} fontSize="xs">使用容量: {task.size ? `${task.size.toFixed(2)} MB` : '未計測'}</Text>
+                        </Box>
+                        <Box className="progress-bar" height="0.5rem" borderRadius="full" bg="gray.600" overflow="hidden">
+                          <Box
+                            className="progress-bar-fill"
+                            width={`${getTaskProgress(task.progress)}%`}
+                            height="100%"
+                            borderRadius="full"
+                            bgGradient="linear(to-r, teal.300, cyan.400)"
+                            transition="width 0.3s"
+                          />
+                        </Box>
+                        {isTaskCompleted(Number(task.status)) && (
+                          <Button
+                            onClick={() => handleTaskSelect(project.id, task.id)}
+                            disabled={modelLoading}
+                            fontSize="sm"
+                            colorScheme="teal"
+                            variant="solid"
+                            size="sm"
+                            _hover={{ bg: "teal.400", color: "white" }}
+                            alignSelf="flex-end"
+                            mt={1}
+                          >
+                            {modelLoading && selectedTask?.taskId === task.id ? '読み込み中...' : '表示'}
+                          </Button>
+                        )}
+                      </Box>
+                    ))}
+                  </Box>
+                </Box>
+              ))}
+            </Box>
 
-          <div {...getRootProps()} className="dropzone">
-            <input {...getInputProps()} />
-            <p>写真または動画をドラッグ＆ドロップ、またはクリックして選択</p>
-          </div>
-        </div>
+            <Box {...getRootProps()} className="dropzone" p="1rem" border="1px dashed" borderColor="gray.300" borderRadius="md" textAlign="center">
+              <Input {...getInputProps()} type="file" multiple />
+              <Text>写真または動画をドラッグ＆ドロップ、またはクリックして選択</Text>
+            </Box>
+          </VStack>
+        </Box>
 
-        <div className="model-section">
-          {loading && (
-            <div className="progress-container">
-              <p>モデルを生成中... {Math.round(progress * 100)}%</p>
-              <div className="progress-bar">
-                <div 
-                  className="progress-bar-fill" 
-                  style={{ width: `${progress * 100}%` }}
-                />
-              </div>
-            </div>
-          )}
-          
-          {modelUrl && !modelLoading && (
-            <Canvas
-              style={{ width: '100%', height: '100%' }}
-              camera={{ 
-                position: [3, 3, 3],
-                fov: 45,
-                near: 0.1,
-                far: 1000
-              }}
-            >
-              <Suspense fallback={null}>
-                <ambientLight intensity={0.5} />
-                <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} />
-                <Model url={modelUrl} />
-                <TrackballControls
-                  enableDamping
-                  dampingFactor={0.05}
-                  rotateSpeed={2.5}
-                  zoomSpeed={1.2}
-                  panSpeed={0.8}
-                  minDistance={0.1}
-                  maxDistance={100}
-                  dynamicDampingFactor={0.2}
-                  noPan={false}
-                  noZoom={false}
-                  noRotate={false}
-                  staticMoving={false}
-                  center={[0, 0, 0]}
-                  handleKeys={{
-                    LEFT: 'ArrowLeft',
-                    UP: 'ArrowUp',
-                    RIGHT: 'ArrowRight',
-                    BOTTOM: 'ArrowDown',
-                    ROTATE: 'ControlLeft'
+        {/* 右カラム: 3Dモデルビュー */}
+        <Box flex={1} p={4} overflowY="auto" height="calc(100vh - 80px)" bg="gray.800">
+          <VStack gap={4} align="stretch" width="100%" height="100%">
+            <Box className="model-section" height="100%" position="relative">
+              {loading && (
+                <Box className="progress-container" p="0.5rem" borderRadius="md" bg="gray.700" border="1px solid" borderColor="gray.600">
+                  <Text color="white">モデルを生成中... {Math.round(progress * 100)}%</Text>
+                  <Box className="progress-bar" height="0.5rem" borderRadius="full" overflow="hidden" bg="gray.600">
+                    <Box 
+                      className="progress-bar-fill" 
+                      height="100%" 
+                      borderRadius="full" 
+                      bgGradient="linear(to-r, teal.300, cyan.400)" 
+                      width={`${Math.round(progress * 100)}%`}
+                      transition="width 0.3s ease-in-out"
+                    />
+                  </Box>
+                </Box>
+              )}
+              {modelUrl && !modelLoading && (
+                <Canvas
+                  style={{ width: '100%', height: '100%' }}
+                  camera={{ 
+                    position: [3, 3, 3],
+                    fov: 45,
+                    near: 0.1,
+                    far: 1000
                   }}
-                />
-              </Suspense>
-            </Canvas>
-          )}
-
-          {modelLoading && (
-            <div className="loading-overlay">
-              <p>3Dモデルを読み込み中...</p>
-            </div>
-          )}
-
-          {error && (
-            <div className="error-message">
-              <p>{error}</p>
-              <button onClick={() => setError(null)}>閉じる</button>
-            </div>
-          )}
-        </div>
-      </main>
-    </div>
+                >
+                  <Suspense fallback={null}>
+                    <ambientLight intensity={0.5} />
+                    <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} />
+                    <Model url={modelUrl} onError={setModelError} />
+                    <TrackballControls
+                      enableDamping
+                      dampingFactor={0.05}
+                      rotateSpeed={5.5}
+                      zoomSpeed={1.2}
+                      panSpeed={0.6}
+                      minDistance={0.1}
+                      maxDistance={100}
+                      dynamicDampingFactor={0.2}
+                      noPan={false}
+                      noZoom={false}
+                      noRotate={false}
+                      staticMoving={false}
+                      center={[0, 0, 0]}
+                      handleKeys={{
+                        LEFT: 'ArrowLeft',
+                        UP: 'ArrowUp',
+                        RIGHT: 'ArrowRight',
+                        BOTTOM: 'ArrowDown',
+                        ROTATE: 'ControlLeft'
+                      }}
+                    />
+                  </Suspense>
+                </Canvas>
+              )}
+              {modelLoading && (
+                <Box
+                  position="absolute"
+                  top={0}
+                  left={0}
+                  width="100%"
+                  height="100%"
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                  bg="rgba(0,0,0,0.6)"
+                  zIndex={10}
+                  borderRadius="md"
+                >
+                  <VStack gap={4}>
+                    <Box as="span" className="chakra-spinner" boxSize={10} borderWidth={2} borderColor="teal.300" borderStyle="solid" borderRadius="full" borderTopColor="transparent" animation="spin 1s linear infinite" />
+                    <Text color="white" fontWeight="bold" fontSize="lg">3Dモデルを読み込み中...</Text>
+                  </VStack>
+                </Box>
+              )}
+              {error && (
+                <Box className="error-message" p="0.5rem 1rem" borderRadius="md" bg="red.100" border="1px solid" borderColor="red.200">
+                  <Text>{error}</Text>
+                  <Button onClick={() => setError(null)}>閉じる</Button>
+                </Box>
+              )}
+              {modelError && (
+                <Box className="error-message" p="0.5rem 1rem" borderRadius="md" bg="red.100" border="1px solid" borderColor="red.200">
+                  <Text>モデルエラー: {modelError}</Text>
+                  <Button onClick={() => setModelError(null)}>閉じる</Button>
+                </Box>
+              )}
+            </Box>
+          </VStack>
+        </Box>
+      </Flex>
+    </Box>
   );
 };
 

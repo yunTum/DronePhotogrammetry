@@ -4,6 +4,7 @@ import { Canvas } from '@react-three/fiber';
 import { TrackballControls } from '@react-three/drei';
 import { GlbModel } from './GlbModel';
 import './ModelViewer.css';
+import { Box, Button, Heading, Text } from "@chakra-ui/react";
 
 const GlbViewer: React.FC = () => {
   const [glbUrl, setGlbUrl] = useState<string | null>(null);
@@ -43,53 +44,13 @@ const GlbViewer: React.FC = () => {
   };
 
   return (
-    <div className="App">
-      <header className="App-header" style={{ padding: '10px 20px' }}>
-        <h1 style={{ margin: '0 0 5px 0', fontSize: '1.5rem' }}>GLB Viewer</h1>
-        <p style={{ margin: 0, fontSize: '0.9rem', color: '#b0b0b0' }}>GLBファイルをドラッグ＆ドロップして表示</p>
-      </header>
+    <Box className="App">
+      <Box className="App-header" style={{ padding: '10px 20px' }}>
+        <Heading style={{ margin: '0 0 5px 0', fontSize: '1.5rem' }}>GLB Viewer</Heading>
+        <Text style={{ margin: 0, fontSize: '0.9rem', color: '#b0b0b0' }}>GLBファイルをドラッグ＆ドロップして表示</Text>
+      </Box>
 
-      <main style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 120px)' }}>
-        <div className="upload-section" style={{ marginBottom: '10px' }}>
-          <div {...getRootProps()} className="dropzone" style={{ 
-            padding: '10px 15px',
-            fontSize: '0.9rem'
-          }}>
-            <input {...getInputProps()} />
-            {isDragActive ? (
-              <p style={{ margin: '5px 0' }}>GLBファイルをここにドロップしてください</p>
-            ) : (
-              <div>
-                <p style={{ margin: '5px 0' }}>GLBファイルをドラッグ＆ドロップ、またはクリックして選択</p>
-                <button 
-                  type="button" 
-                  onClick={() => fileInputRef.current?.click()}
-                  style={{
-                    marginTop: '5px',
-                    padding: '5px 12px',
-                    backgroundColor: '#007bff',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontSize: '0.8rem'
-                  }}
-                >
-                  ファイルを選択
-                </button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".glb"
-                  onChange={handleFileSelect}
-                  style={{ display: 'none' }}
-                />
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="model-section" style={{ 
+      <Box className="model-section" style={{ 
           flex: 1, 
           minHeight: 0,
           backgroundColor: '#1a1d24',
@@ -142,13 +103,12 @@ const GlbViewer: React.FC = () => {
           )}
 
           {error && (
-            <div className="error-message">
-              <p>{error}</p>
-              <button onClick={() => setError(null)}>閉じる</button>
-            </div>
+            <Box className="error-message">
+              <Text>{error}</Text>
+              <Button onClick={() => setError(null)}>閉じる</Button>
+            </Box>
           )}
-        </div>
-      </main>
+        </Box>
 
       <style>{`
         @keyframes pulse {
@@ -157,7 +117,7 @@ const GlbViewer: React.FC = () => {
           100% { opacity: 1; }
         }
       `}</style>
-    </div>
+    </Box>
   );
 };
 

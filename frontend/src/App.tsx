@@ -3,16 +3,17 @@ import { useAuth } from './contexts/AuthContext';
 import Login from './components/Login';
 import ModelViewer from './components/ModelViewer';
 import GlbViewer from './components/GlbViewer';
+import ProjectTablePage from './components/ProjectTablePage';
 import './App.css';
 
 const App: React.FC = () => {
   const { isAuthenticated, logout } = useAuth();
-  const [currentPage, setCurrentPage] = useState<'login' | 'model' | 'glb'>('login');
+  const [currentPage, setCurrentPage] = useState<'login' | 'mypage' | 'model' | 'glb'>('login');
 
   // ログイン済みの場合はModel Viewerを表示
   useEffect(() => {
     if (isAuthenticated && currentPage === 'login') {
-      setCurrentPage('model');
+      setCurrentPage('mypage');
     }
   }, [isAuthenticated, currentPage]);
 
@@ -52,8 +53,10 @@ const App: React.FC = () => {
     switch (currentPage) {
       case 'login':
         return <Login onGlbViewerClick={() => setCurrentPage('glb')} />;
+      case 'mypage':
+        return <ProjectTablePage onGoModel={() => setCurrentPage('model')} />;
       case 'model':
-        return <ModelViewer />;
+        return <ModelViewer onGoMypage={() => setCurrentPage('mypage')} />;
       case 'glb':
         return <GlbViewer />;
       default:
